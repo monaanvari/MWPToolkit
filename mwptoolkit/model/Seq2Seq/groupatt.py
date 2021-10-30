@@ -8,30 +8,6 @@ from torch import nn
 import torch
 import warnings
 import random
-groupatt.py
-Who has access
-
-M
-S
-System properties
-Type
-Text
-Size
-14 KB
-Storage used
-14 KB
-Location
-ChangedFilesMWP
-Owner
-Shyamoli Sanghi
-Modified
-Oct 21, 2021 by Shyamoli Sanghi
-Opened
-3: 11 AM by me
-Created
-Oct 29, 2021
-Add a description
-Viewers can download
 # -*- encoding: utf-8 -*-
 # @Author: Yihuai Lan
 # @Time: 2021/08/21 04:36:25
