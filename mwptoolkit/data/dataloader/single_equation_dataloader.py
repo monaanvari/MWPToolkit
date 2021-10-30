@@ -4,30 +4,6 @@ from mwptoolkit.utils.preprocess_tools import find_ept_numbers_in_text, postfix_
 from mwptoolkit.data.dataloader.abstract_dataloader import AbstractDataLoader
 import torch
 import random
-single_equation_dataloader.py
-Who has access
-
-M
-S
-System properties
-Type
-Text
-Size
-15 KB
-Storage used
-15 KB
-Location
-ChangedFilesMWP
-Owner
-Shyamoli Sanghi
-Modified
-Oct 21, 2021 by Shyamoli Sanghi
-Opened
-3: 13 AM by me
-Created
-Oct 29, 2021
-Add a description
-Viewers can download
 # -*- encoding: utf-8 -*-
 # @Author: Yihuai Lan
 # @Time: 2021/08/18 11:35:50
