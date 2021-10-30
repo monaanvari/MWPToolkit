@@ -1,20 +1,41 @@
+from mwptoolkit.loss.nll_loss import NLLLoss
+from mwptoolkit.utils.enum_type import SpecialTokens, NumMask
+from mwptoolkit.module.Embedder.basic_embedder import BaiscEmbedder
+from mwptoolkit.module.Decoder.rnn_decoder import BasicRNNDecoder, AttentionalRNNDecoder
+from mwptoolkit.module.Encoder.rnn_encoder import GroupAttentionRNNEncoder
+from torch.nn import functional as F
+from torch import nn
+import torch
+import warnings
+import random
+groupatt.py
+Who has access
+
+M
+S
+System properties
+Type
+Text
+Size
+14 KB
+Storage used
+14 KB
+Location
+ChangedFilesMWP
+Owner
+Shyamoli Sanghi
+Modified
+Oct 21, 2021 by Shyamoli Sanghi
+Opened
+3: 11 AM by me
+Created
+Oct 29, 2021
+Add a description
+Viewers can download
 # -*- encoding: utf-8 -*-
 # @Author: Yihuai Lan
 # @Time: 2021/08/21 04:36:25
 # @File: groupatt.py
-
-import random
-import warnings
-
-import torch
-from torch import nn
-from torch.nn import functional as F
-
-from mwptoolkit.module.Encoder.rnn_encoder import GroupAttentionRNNEncoder
-from mwptoolkit.module.Decoder.rnn_decoder import BasicRNNDecoder, AttentionalRNNDecoder
-from mwptoolkit.module.Embedder.basic_embedder import BaiscEmbedder
-from mwptoolkit.utils.enum_type import SpecialTokens, NumMask
-from mwptoolkit.loss.nll_loss import NLLLoss
 
 
 class GroupATT(nn.Module):
@@ -22,6 +43,7 @@ class GroupATT(nn.Module):
     Reference:
         Li et al. "Modeling Intra-Relation in Math Word Problems with Different Functional Multi-Head Attentions" in ACL 2019.
     """
+
     def __init__(self, config, dataset):
         super(GroupATT, self).__init__()
         self.bidirectional = config["bidirectional"]
@@ -80,11 +102,13 @@ class GroupATT(nn.Module):
             self.split_list.append(self.in_word2idx[","])
         except:
             pass
-        self.in_embedder = BaiscEmbedder(self.vocab_size, self.embedding_size, self.dropout_ratio)
+        self.in_embedder = BaiscEmbedder(
+            self.vocab_size, self.embedding_size, self.dropout_ratio)
         if self.share_vocab:
             self.out_embedder = self.in_embedder
         else:
-            self.out_embedder = BaiscEmbedder(self.symbol_size, self.embedding_size, self.dropout_ratio)
+            self.out_embedder = BaiscEmbedder(
+                self.symbol_size, self.embedding_size, self.dropout_ratio)
 
         self.encoder = GroupAttentionRNNEncoder(emb_size=self.embedding_size,
                                                 hidden_size=self.hidden_size,
@@ -97,10 +121,12 @@ class GroupATT(nn.Module):
                                                 dropout=self.dropout_ratio,
                                                 N=1)
 
-        self.decoder = AttentionalRNNDecoder(self.embedding_size, self.decode_hidden_size, self.hidden_size, self.num_layers, self.decoder_rnn_cell_type, self.dropout_ratio)
+        self.decoder = AttentionalRNNDecoder(self.embedding_size, self.decode_hidden_size,
+                                             self.hidden_size, self.num_layers, self.decoder_rnn_cell_type, self.dropout_ratio)
 
         self.dropout = nn.Dropout(self.dropout_ratio)
-        self.generate_linear = nn.Linear(self.decode_hidden_size, self.symbol_size)
+        self.generate_linear = nn.Linear(
+            self.decode_hidden_size, self.symbol_size)
 
         weight = torch.ones(self.symbol_size).to(config["device"])
         pad = self.out_pad_token
@@ -127,7 +153,8 @@ class GroupATT(nn.Module):
         if encoder_hidden is None:
             return None
         if isinstance(encoder_hidden, tuple):
-            encoder_hidden = tuple([self._cat_directions(h) for h in encoder_hidden])
+            encoder_hidden = tuple([self._cat_directions(h)
+                                   for h in encoder_hidden])
         else:
             encoder_hidden = self._cat_directions(encoder_hidden)
         return encoder_hidden
@@ -142,25 +169,28 @@ class GroupATT(nn.Module):
         device = seq.device
 
         seq_emb = self.in_embedder(seq)
-        encoder_outputs, encoder_hidden = self.encoder(seq_emb, seq, self.vocab_dict, seq_length)
+        encoder_outputs, encoder_hidden = self.encoder(
+            seq_emb, seq, self.vocab_dict, seq_length)
         encoder_hidden = self.process_gap_encoder_decoder(encoder_hidden)
 
         decoder_inputs = self.init_decoder_inputs(target, device, batch_size)
 
         if target != None:
             #print('encoder_outputs', encoder_outputs)
-            token_logits = self.generate_t(encoder_outputs, encoder_hidden, decoder_inputs)
+            token_logits = self.generate_t(
+                encoder_outputs, encoder_hidden, decoder_inputs)
             return token_logits
         else:
-            all_outputs = self.generate_without_t(encoder_outputs, encoder_hidden, decoder_inputs)
+            all_outputs = self.generate_without_t(
+                encoder_outputs, encoder_hidden, decoder_inputs)
             return all_outputs
 
     def calculate_loss(self, batch_data):
         """Finish forward-propagating, calculating loss and back-propagation.
-        
+
         Args:
             batch_data (dict): one batch data.
-        
+
         Returns:
             float: loss value.
         """
@@ -172,12 +202,14 @@ class GroupATT(nn.Module):
         device = seq.device
 
         seq_emb = self.in_embedder(seq)
-        encoder_outputs, encoder_hidden = self.encoder(seq_emb, seq, self.split_list, seq_length)
+        encoder_outputs, encoder_hidden = self.encoder(
+            seq_emb, seq, self.split_list, seq_length)
         encoder_hidden = self.process_gap_encoder_decoder(encoder_hidden)
 
         decoder_inputs = self.init_decoder_inputs(target, device, batch_size)
 
-        token_logits = self.generate_t(encoder_outputs, encoder_hidden, decoder_inputs)
+        token_logits = self.generate_t(
+            encoder_outputs, encoder_hidden, decoder_inputs)
         if self.share_vocab:
             target = self.convert_in_idx_2_out_idx(target)
         self.loss.reset()
@@ -187,10 +219,10 @@ class GroupATT(nn.Module):
 
     def model_test(self, batch_data):
         """Model test.
-        
+
         Args:
             batch_data (dict): one batch data.
-        
+
         Returns:
             tuple(list,list): predicted equation, target equation.
         """
@@ -203,22 +235,25 @@ class GroupATT(nn.Module):
         device = seq.device
 
         seq_emb = self.in_embedder(seq)
-        encoder_outputs, encoder_hidden = self.encoder(seq_emb, seq, self.split_list, seq_length)
+        encoder_outputs, encoder_hidden = self.encoder(
+            seq_emb, seq, self.split_list, seq_length)
         encoder_hidden = self.process_gap_encoder_decoder(encoder_hidden)
 
         decoder_inputs = self.init_decoder_inputs(None, device, batch_size)
 
-        all_outputs = self.generate_without_t(encoder_outputs, encoder_hidden, decoder_inputs)
+        all_outputs = self.generate_without_t(
+            encoder_outputs, encoder_hidden, decoder_inputs)
         if self.share_vocab:
             target = self.convert_in_idx_2_out_idx(target)
         all_outputs = self.convert_idx2symbol(all_outputs, num_list)
         targets = self.convert_idx2symbol(target, num_list)
-        return all_outputs, targets
+        return seq, all_outputs, targets
 
     def generate_t(self, encoder_outputs, encoder_hidden, decoder_inputs):
         with_t = random.random()
         if with_t < self.teacher_force_ratio:
-            decoder_outputs, decoder_states = self.decoder(decoder_inputs, encoder_hidden, encoder_outputs)
+            decoder_outputs, decoder_states = self.decoder(
+                decoder_inputs, encoder_hidden, encoder_outputs)
             token_logits = self.generate_linear(decoder_outputs)
             token_logits = token_logits.view(-1, token_logits.size(-1))
             token_logits = torch.nn.functional.log_softmax(token_logits, dim=1)
@@ -229,9 +264,11 @@ class GroupATT(nn.Module):
             token_logits = []
             for idx in range(seq_len):
                 if self.attention:
-                    decoder_output, decoder_hidden = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
+                    decoder_output, decoder_hidden = self.decoder(
+                        decoder_input, decoder_hidden, encoder_outputs)
                 else:
-                    decoder_output, decoder_hidden = self.decoder(decoder_input, decoder_hidden)
+                    decoder_output, decoder_hidden = self.decoder(
+                        decoder_input, decoder_hidden)
                 # attn_list.append(attn)
                 step_output = decoder_output.squeeze(1)
                 token_logit = self.generate_linear(step_output)
@@ -253,7 +290,8 @@ class GroupATT(nn.Module):
         all_outputs = []
         decoder_hidden = encoder_hidden
         for idx in range(self.max_gen_len):
-            decoder_output, decoder_hidden = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
+            decoder_output, decoder_hidden = self.decoder(
+                decoder_input, decoder_hidden, encoder_outputs)
             step_output = decoder_output.squeeze(1)
             token_logits = self.generate_linear(step_output)
             predict = torch.nn.functional.log_softmax(token_logits, dim=1)
@@ -269,7 +307,8 @@ class GroupATT(nn.Module):
         return all_outputs
 
     def init_decoder_inputs(self, target, device, batch_size):
-        pad_var = torch.LongTensor([self.sos_token_idx] * batch_size).to(device).view(batch_size, 1)
+        pad_var = torch.LongTensor(
+            [self.sos_token_idx] * batch_size).to(device).view(batch_size, 1)
         if target != None:
             decoder_inputs = torch.cat((pad_var, target), dim=1)[:, :-1]
         else:
@@ -283,8 +322,10 @@ class GroupATT(nn.Module):
         batch_size = output.size(0)
         decoded_output = []
         for idx in range(batch_size):
-            decoded_output.append(self.in_word2idx[self.out_idx2symbol[output[idx]]])
-        decoded_output = torch.tensor(decoded_output).to(device).view(batch_size, -1)
+            decoded_output.append(
+                self.in_word2idx[self.out_idx2symbol[output[idx]]])
+        decoded_output = torch.tensor(decoded_output).to(
+            device).view(batch_size, -1)
         return output
 
     def convert_out_idx_2_in_idx(self, output):
@@ -297,9 +338,11 @@ class GroupATT(nn.Module):
         for b_i in range(batch_size):
             output_i = []
             for s_i in range(seq_len):
-                output_i.append(self.in_word2idx[self.out_idx2symbol[output[b_i, s_i]]])
+                output_i.append(
+                    self.in_word2idx[self.out_idx2symbol[output[b_i, s_i]]])
             decoded_output.append(output_i)
-        decoded_output = torch.tensor(decoded_output).to(device).view(batch_size, -1)
+        decoded_output = torch.tensor(decoded_output).to(
+            device).view(batch_size, -1)
         return decoded_output
 
     def convert_in_idx_2_out_idx(self, output):
@@ -312,9 +355,11 @@ class GroupATT(nn.Module):
         for b_i in range(batch_size):
             output_i = []
             for s_i in range(seq_len):
-                output_i.append(self.out_symbol2idx[self.in_idx2word[output[b_i, s_i]]])
+                output_i.append(
+                    self.out_symbol2idx[self.in_idx2word[output[b_i, s_i]]])
             decoded_output.append(output_i)
-        decoded_output = torch.tensor(decoded_output).to(device).view(batch_size, -1)
+        decoded_output = torch.tensor(decoded_output).to(
+            device).view(batch_size, -1)
         return decoded_output
 
     def convert_idx2symbol(self, output, num_list):
@@ -343,8 +388,8 @@ class GroupATT(nn.Module):
     def __str__(self):
         info = super().__str__()
         total = sum(p.numel() for p in self.parameters())
-        trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        parameters = "\ntotal parameters : {} \ntrainable parameters : {}".format(total, trainable)
+        trainable = sum(p.numel()
+                        for p in self.parameters() if p.requires_grad)
+        parameters = "\ntotal parameters : {} \ntrainable parameters : {}".format(
+            total, trainable)
         return info + parameters
-
-

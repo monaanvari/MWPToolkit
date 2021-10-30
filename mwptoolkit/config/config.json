@@ -1,3 +1,15 @@
+config.json
+Who has access
+
+M
+S
+System properties
+Type
+Unknown File
+Size
+274 bytes
+Storage used
+
 {
     "random_seed":2021,
     "use_gpu":true,
@@ -8,5 +20,6 @@
     "supervising_mode": "fully_supervised",
     "rebuild":false,
     "validset_divide":true,
-    "shuffle":false
+    "shuffle":false,
+    "test_only":true
 }

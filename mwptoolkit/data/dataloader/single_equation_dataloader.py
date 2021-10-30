@@ -1,17 +1,39 @@
+from mwptoolkit.utils.enum_type import FixType, NumMask, SpecialTokens, EPT
+from transformers import AutoTokenizer
+from mwptoolkit.utils.preprocess_tools import find_ept_numbers_in_text, postfix_parser, pad_token_ept_inp, ept_equ_preprocess
+from mwptoolkit.data.dataloader.abstract_dataloader import AbstractDataLoader
+import torch
+import random
+single_equation_dataloader.py
+Who has access
+
+M
+S
+System properties
+Type
+Text
+Size
+15 KB
+Storage used
+15 KB
+Location
+ChangedFilesMWP
+Owner
+Shyamoli Sanghi
+Modified
+Oct 21, 2021 by Shyamoli Sanghi
+Opened
+3: 13 AM by me
+Created
+Oct 29, 2021
+Add a description
+Viewers can download
 # -*- encoding: utf-8 -*-
 # @Author: Yihuai Lan
 # @Time: 2021/08/18 11:35:50
 # @File: single_equation_dataloader.py
 
 
-import random
-import torch
-
-from mwptoolkit.data.dataloader.abstract_dataloader import AbstractDataLoader
-from mwptoolkit.utils.enum_type import FixType, NumMask,SpecialTokens, EPT
-from mwptoolkit.utils.preprocess_tools import find_ept_numbers_in_text, postfix_parser, pad_token_ept_inp, ept_equ_preprocess
-
-from transformers import AutoTokenizer
 def get_num_mask(num_size_batch, generate_nums):
     num_mask = []
     max_num_size = max(num_size_batch) + len(generate_nums)
@@ -24,13 +46,14 @@ def get_num_mask(num_size_batch, generate_nums):
 class SingleEquationDataLoader(AbstractDataLoader):
     """single-equation dataloader
     """
+
     def __init__(self, config, dataset):
         """
         Args:
             config (mwptoolkit.config.configuration.Config)
 
             dataset (mwptoolit.data.dataset)
-        
+
         expected that config includes these parameters below:
 
         model (str): model name.
@@ -76,7 +99,6 @@ class SingleEquationDataLoader(AbstractDataLoader):
                 self.temp_pad_token = dataset.temp_symbol2idx[SpecialTokens.PAD_TOKEN]
                 self.temp_unk_token = dataset.temp_symbol2idx[SpecialTokens.UNK_TOKEN]
 
-
     def load_data(self, type):
         """load batches
 
@@ -96,7 +118,8 @@ class SingleEquationDataLoader(AbstractDataLoader):
             datas = self.dataset.testset
             batch_size = self.test_batch_size
         else:
-            raise ValueError("{} type not in ['train', 'valid', 'test'].".format(type))
+            raise ValueError(
+                "{} type not in ['train', 'valid', 'test'].".format(type))
 
         num_total = len(datas)
         batch_num = int(num_total / batch_size) + 1
@@ -110,22 +133,23 @@ class SingleEquationDataLoader(AbstractDataLoader):
             if batch_data != []:
                 batch_data = self.load_batch(batch_data)
                 yield batch_data
-    
-    def load_batch_spans(self,batch_data):
+
+    def load_batch_spans(self, batch_data):
         pad_num_pos = [-1] * len(self.dataset.out_idx2symbol)
-        max_span_nums=0
-        span_nums_batch=[]
-        spans_batch=[]
-        spans_length_batch=[]
-        trees_batch=[]
-        span_num_pos_batch=[]
-        word_num_poses_batch=[]
-        word_num_poses_pad_batch=[]
+        max_span_nums = 0
+        span_nums_batch = []
+        spans_batch = []
+        spans_length_batch = []
+        trees_batch = []
+        span_num_pos_batch = []
+        word_num_poses_batch = []
+        word_num_poses_pad_batch = []
         for data in batch_data:
             span_nums = len(data['split sentences'])
             span_nums_batch.append(span_nums)
             span_num_pos = [-1] * len(self.dataset.out_idx2symbol)
-            word_num_poses = [[-1] * len(self.dataset.out_idx2symbol) for _ in range(span_nums)]
+            word_num_poses = [[-1] * len(self.dataset.out_idx2symbol)
+                              for _ in range(span_nums)]
             for i, span in enumerate(data['split sentences']):
                 for j, word in enumerate(span):
                     if word in NumMask.number and word in self.dataset.out_idx2symbol:
@@ -134,43 +158,45 @@ class SingleEquationDataLoader(AbstractDataLoader):
                         word_num_poses[i][class_index] = j
             span_num_pos_batch.append(span_num_pos)
             word_num_poses_batch.append(word_num_poses)
-        max_span_nums=max(span_nums_batch)
+        max_span_nums = max(span_nums_batch)
         for span_idx in range(max_span_nums):
-            span_i_batch=[]
-            span_i_length_batch=[]
-            tree_i_batch=[]
+            span_i_batch = []
+            span_i_length_batch = []
+            tree_i_batch = []
             word_num_poses_pad = []
-            for b_i,data in enumerate(batch_data):
-                if span_idx>=span_nums_batch[b_i]:
+            for b_i, data in enumerate(batch_data):
+                if span_idx >= span_nums_batch[b_i]:
                     span_i_batch.append([])
                     span_i_length_batch.append(0)
                     word_num_poses_pad.append(pad_num_pos)
                 else:
-                    sentence=data['split sentences'][span_idx]
-                    sentence_idx=self._word2idx(sentence)
-                    span_i_length=len(sentence_idx)
+                    sentence = data['split sentences'][span_idx]
+                    sentence_idx = self._word2idx(sentence)
+                    span_i_length = len(sentence_idx)
                     span_i_batch.append(sentence_idx)
                     span_i_length_batch.append(span_i_length)
-                    word_num_poses_pad.append(word_num_poses_batch[b_i][span_idx])
+                    word_num_poses_pad.append(
+                        word_num_poses_batch[b_i][span_idx])
                 try:
-                    tree=data['deprel tree'][span_idx]
+                    tree = data['deprel tree'][span_idx]
                     tree_i_batch.append(tree)
                 except:
                     tree_i_batch.append(None)
-            span_i_batch=self._pad_input_batch(span_i_batch,span_i_length_batch)
+            span_i_batch = self._pad_input_batch(
+                span_i_batch, span_i_length_batch)
             spans_batch.append(span_i_batch)
             spans_length_batch.append(span_i_length_batch)
             trees_batch.append(tree_i_batch)
             word_num_poses_pad_batch.append(word_num_poses_pad)
-        
-        return spans_batch,spans_length_batch,span_nums_batch,trees_batch,span_num_pos_batch,word_num_poses_pad_batch
-    
+
+        return spans_batch, spans_length_batch, span_nums_batch, trees_batch, span_num_pos_batch, word_num_poses_pad_batch
+
     def load_batch(self, batch_data):
         """load one batch
 
         Args:
             batch_data (list[dict])
-        
+
         Returns:
             loaded batch data (dict)
         """
@@ -200,7 +226,8 @@ class SingleEquationDataLoader(AbstractDataLoader):
         num_stack_batch = []
 
         group_nums_batch = []
-        batch_data=sorted(batch_data,key=lambda x:len(x['question']),reverse=True)
+        batch_data = sorted(batch_data, key=lambda x: len(
+            x['question']), reverse=True)
         for data in batch_data:
             ques_tensor = []
             equ_tensor = []
@@ -211,12 +238,12 @@ class SingleEquationDataLoader(AbstractDataLoader):
 
             # question word to index
             if self.add_sos:
-                #ques_tensor.append(self.dataset.in_word2idx[SpecialTokens.SOS_TOKEN])
-                sentence=[SpecialTokens.SOS_TOKEN]+sentence
+                # ques_tensor.append(self.dataset.in_word2idx[SpecialTokens.SOS_TOKEN])
+                sentence = [SpecialTokens.SOS_TOKEN]+sentence
             #ques_tensor += self._word2idx(sentence)
             if self.add_eos:
-                sentence=sentence+[SpecialTokens.EOS_TOKEN]
-                #ques_tensor.append(self.dataset.in_word2idx[SpecialTokens.EOS_TOKEN])
+                sentence = sentence+[SpecialTokens.EOS_TOKEN]
+                # ques_tensor.append(self.dataset.in_word2idx[SpecialTokens.EOS_TOKEN])
             ques_tensor = self._word2idx(sentence)
 
             # equation symbol to index
@@ -226,11 +253,15 @@ class SingleEquationDataLoader(AbstractDataLoader):
                 pass
             else:
                 if self.share_vocab:
-                    equ_tensor.append(self.dataset.in_word2idx[SpecialTokens.EOS_TOKEN])
-                    temp_tensor.append(self.dataset.in_word2idx[SpecialTokens.EOS_TOKEN])
+                    equ_tensor.append(
+                        self.dataset.in_word2idx[SpecialTokens.EOS_TOKEN])
+                    temp_tensor.append(
+                        self.dataset.in_word2idx[SpecialTokens.EOS_TOKEN])
                 else:
-                    equ_tensor.append(self.dataset.out_symbol2idx[SpecialTokens.EOS_TOKEN])
-                    temp_tensor.append(self.dataset.temp_symbol2idx[SpecialTokens.EOS_TOKEN])
+                    equ_tensor.append(
+                        self.dataset.out_symbol2idx[SpecialTokens.EOS_TOKEN])
+                    temp_tensor.append(
+                        self.dataset.temp_symbol2idx[SpecialTokens.EOS_TOKEN])
 
             equ_len_batch.append(len(equ_tensor))
             ques_len_batch.append(len(ques_tensor))
@@ -256,7 +287,8 @@ class SingleEquationDataLoader(AbstractDataLoader):
             num_list_batch.append(data["number list"])
             # quantity position
             if self.add_sos:
-                num_pos = [pos + 1 for pos in data["number position"]]  # pos plus one because of adding <SOS> at the head of sentence
+                # pos plus one because of adding <SOS> at the head of sentence
+                num_pos = [pos + 1 for pos in data["number position"]]
             else:
                 num_pos = [pos for pos in data["number position"]]
             num_pos_batch.append(num_pos)
@@ -268,7 +300,8 @@ class SingleEquationDataLoader(AbstractDataLoader):
             except:
                 group_nums_batch.append([])
 
-            num_stack_batch.append(self._build_num_stack(equation, data["number list"]))
+            num_stack_batch.append(self._build_num_stack(
+                equation, data["number list"]))
 
         # padding batch question
         ques_batch = self._pad_input_batch(ques_batch, ques_len_batch)
@@ -278,9 +311,10 @@ class SingleEquationDataLoader(AbstractDataLoader):
         else:
             equ_batch = self._pad_output_batch(equ_batch, equ_len_batch)
             temp_batch = self._pad_output_batch(temp_batch, equ_len_batch)
-        
+
         if self.max_len != None:
-            ques_len_batch=[self.max_len if l>self.max_len else l for l in ques_len_batch]
+            ques_len_batch = [self.max_len if l >
+                              self.max_len else l for l in ques_len_batch]
 
         # question mask
         ques_mask_batch = self._get_mask(ques_len_batch)
@@ -289,7 +323,8 @@ class SingleEquationDataLoader(AbstractDataLoader):
         # quantity count
         num_size_batch = [len(num_pos) for num_pos in num_pos_batch]
         # quantity mask
-        num_mask_batch = get_num_mask(num_size_batch, self.dataset.generate_list)
+        num_mask_batch = get_num_mask(
+            num_size_batch, self.dataset.generate_list)
 
         new_group_nums_batch = []
         for group_nums in group_nums_batch:
@@ -317,21 +352,25 @@ class SingleEquationDataLoader(AbstractDataLoader):
         equ_mask_batch = torch.tensor(equ_mask_batch).to(self.device).bool()
 
         if self.dataset.model.lower() in ['hms']:
-            spans_batch,spans_length_batch,span_nums_batch,trees_batch,\
-                span_num_pos_batch,word_num_poses_batch=self.load_batch_spans(batch_data)
+            spans_batch, spans_length_batch, span_nums_batch, trees_batch,\
+                span_num_pos_batch, word_num_poses_batch = self.load_batch_spans(
+                    batch_data)
             # to tensor
-            spans_batch = [torch.tensor(span_i_batch).to(self.device) for span_i_batch in spans_batch]
+            spans_batch = [torch.tensor(span_i_batch).to(
+                self.device) for span_i_batch in spans_batch]
             spans_length_batch = torch.tensor(spans_length_batch).long()
             span_nums_batch = torch.tensor(span_nums_batch).to(self.device)
-            span_num_pos_batch = torch.LongTensor(span_num_pos_batch).to(self.device)
-            word_num_poses_batch = [torch.LongTensor(word_num_pos).to(self.device) for word_num_pos in word_num_poses_batch]
+            span_num_pos_batch = torch.LongTensor(
+                span_num_pos_batch).to(self.device)
+            word_num_poses_batch = [torch.LongTensor(word_num_pos).to(
+                self.device) for word_num_pos in word_num_poses_batch]
             return {
-                "spans":spans_batch,
-                "spans len":spans_length_batch,
-                "span nums":span_nums_batch,
-                "deprel tree":trees_batch,
-                "span num pos":span_num_pos_batch,
-                "word num poses":word_num_poses_batch,
+                "spans": spans_batch,
+                "spans len": spans_length_batch,
+                "span nums": span_nums_batch,
+                "deprel tree": trees_batch,
+                "span num pos": span_num_pos_batch,
+                "word num poses": word_num_poses_batch,
                 "question": ques_tensor_batch,
                 "equation": equ_tensor_batch,
                 "template": temp_tensor_batch,

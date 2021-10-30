@@ -1,12 +1,34 @@
+from mwptoolkit.utils.enum_type import FixType, SpecialTokens
+import torch
+import random
+abstract_dataloader.py
+Who has access
+
+M
+S
+System properties
+Type
+Text
+Size
+7 KB
+Storage used
+7 KB
+Location
+ChangedFilesMWP
+Owner
+Shyamoli Sanghi
+Modified
+Oct 21, 2021 by Shyamoli Sanghi
+Opened
+3: 10 AM by me
+Created
+Oct 29, 2021
+Add a description
+Viewers can download
 # -*- encoding: utf-8 -*-
 # @Author: Yihuai Lan
 # @Time: 2021/08/18 11:34:06
 # @File: abstract_dataloader.py
-
-
-import random
-import torch
-from mwptoolkit.utils.enum_type import FixType, SpecialTokens
 
 
 class AbstractDataLoader(object):
@@ -14,13 +36,14 @@ class AbstractDataLoader(object):
 
     the base class of dataloader class
     """
+
     def __init__(self, config, dataset):
         """
         Args:
             config (mwptoolkit.config.configuration.Config)
 
             dataset (mwptoolit.data.dataset)
-        
+
         expected that config includes these parameters below:
 
         model (str): model name.
@@ -48,7 +71,7 @@ class AbstractDataLoader(object):
         self.test_batch_size = config["test_batch_size"]
         self.symbol_for_tree = config["symbol_for_tree"]
         self.share_vocab = config["share_vocab"]
-        
+
         self.max_len = config["max_len"]
         self.max_equ_len = config["max_equ_len"]
         self.add_sos = config["add_sos"]
@@ -56,7 +79,6 @@ class AbstractDataLoader(object):
         self.filt_dirty = config["filt_dirty"]
 
         self.device = config["device"]
-        
 
         self.dataset = dataset
         self.in_pad_token = None
@@ -74,10 +96,12 @@ class AbstractDataLoader(object):
             max_length = max(batch_seq_len)
         for idx, length in enumerate(batch_seq_len):
             if length < max_length:
-                batch_seq[idx] += [self.in_pad_token for i in range(max_length - length)]
+                batch_seq[idx] += [
+                    self.in_pad_token for i in range(max_length - length)]
             else:
                 if self.add_sos and self.add_eos:
-                    batch_seq[idx] = [batch_seq[idx][0]] + batch_seq[idx][1:max_length-1] + [batch_seq[idx][-1]]
+                    batch_seq[idx] = [batch_seq[idx][0]] + \
+                        batch_seq[idx][1:max_length-1] + [batch_seq[idx][-1]]
                 else:
                     batch_seq[idx] = batch_seq[idx][:max_length]
         return batch_seq
@@ -89,7 +113,8 @@ class AbstractDataLoader(object):
             max_length = max(batch_target_len)
         for idx, length in enumerate(batch_target_len):
             if length < max_length:
-                batch_target[idx] += [self.out_pad_token for i in range(max_length - length)]
+                batch_target[idx] += [
+                    self.out_pad_token for i in range(max_length - length)]
             else:
                 batch_target[idx] = batch_target[idx][:max_length]
         return batch_target
@@ -178,7 +203,7 @@ class AbstractDataLoader(object):
         for idx, length in enumerate(batch_seq_len):
             batch_mask.append([1] * length + [0] * (max_length - length))
         return batch_mask
-    
+
     def _get_input_mask(self, batch_seq_len):
         if self.max_len:
             max_length = self.max_len
